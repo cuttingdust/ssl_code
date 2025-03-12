@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.12)
 set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake CACHE STRING "Vcpkg toolchain file")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-project(ssh-code)
+project(ssl-code)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 if(MSVC)
@@ -52,3 +52,4 @@ include(CommonTools)
 
 
 add_subdirectory(test_ssl)
+add_subdirectory(base16)
