@@ -53,3 +53,4 @@ include(CommonTools)
 
 add_subdirectory(test_ssl)
 add_subdirectory(base16)
+add_subdirectory(base64)
