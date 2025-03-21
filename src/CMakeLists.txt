@@ -56,3 +56,9 @@ add_subdirectory(base16)
 add_subdirectory(base64)
 add_subdirectory(base58)
 add_subdirectory(MD5_test_hash)
+add_subdirectory(MD5_hash_list)
+
+# 拷贝assert目录到输出目录
+set(ASSERT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/assert)
+
+file(COPY ${ASSERT_PATH} DESTINATION ${OUT_RUN_PATH})
