@@ -5,6 +5,26 @@
 #include <vector>
 #include <openssl/sha.h>
 
+void TestBit()
+{
+    unsigned char data[128] = "测试比特币挖矿，模拟交易链";
+    int           data_size = strlen((char *)data);
+    unsigned int  nonce     = 0; /// 找到nonce
+    unsigned char md1[1024] = { 0 };
+    unsigned char md2[1024] = { 0 };
+    for (;;)
+    {
+        nonce++;
+        memcpy(data + data_size, &nonce, sizeof(nonce));
+        SHA256(data, data_size + sizeof(nonce), md1);
+        SHA256(md1, 64, md2);
+        /// 工作量 难度 /// 317 /// 1223339 /// 3998170
+        if (md2[0] == 0 && md2[1] == 0 && md2[2] == 0)
+            break;
+    }
+    std::cout << "nonce = " << nonce << std::endl;
+}
+
 /// 文件可信树Hash
 /*
                     A               A
@@ -104,6 +124,8 @@ void PrintHex(const std::string &data)
 
 int main(int argc, char *argv[])
 {
+    TestBit();
+    getchar();
     std::cout << "Test  Hash!" << std::endl;
     unsigned char data[]    = "测试md5数据";
     unsigned char out[1024] = { 0 };
