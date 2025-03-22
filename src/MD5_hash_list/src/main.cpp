@@ -1,6 +1,7 @@
 #include <iostream>
 #include <openssl/md5.h>
 #include <fstream>
+#include <thread>
 
 std::string GetFileListHash(const std::string &filePath)
 {
@@ -63,6 +64,17 @@ int main(int argc, char *argv[])
     std::string filepath = "./assert/main.cpp";
     auto        hash1    = GetFileListHash(filepath);
     PrintHex(hash1);
+
+    for (;;) /// 模拟文件修改
+    {
+        auto hash = GetFileListHash(filepath);
+        if (hash != hash1)
+        {
+            std::cout << "文件被修改" << std::endl;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
     getchar();
     return 0;
