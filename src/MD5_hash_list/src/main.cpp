@@ -1,5 +1,38 @@
 #include <iostream>
 #include <openssl/md5.h>
+#include <fstream>
+
+std::string GetFileListHash(const std::string &filePath)
+{
+    std::string result;
+    /// 以二进制方式打开文件
+    std::ifstream ifs(filePath, std::ios::binary);
+    if (!ifs)
+        return result;
+
+    /// 一次读取多少字节
+    int block_size = 128;
+
+    /// 文件读取buf
+    unsigned char buf[1024] = { 0 };
+
+    /// hash输出
+    unsigned char out[1024] = { 0 };
+
+    while (!ifs.eof())
+    {
+        ifs.read((char *)buf, block_size);
+        int read_size = ifs.gcount();
+        if (read_size <= 0)
+            break;
+        MD5(buf, read_size, out);
+        result.insert(result.end(), out, out + 16);
+    }
+    ifs.close();
+    MD5((unsigned char *)result.data(), result.size(), out);
+
+    return std::string(out, out + 16);
+}
 
 void PrintHex(const std::string &data)
 {
