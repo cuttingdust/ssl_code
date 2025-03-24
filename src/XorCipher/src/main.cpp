@@ -11,8 +11,23 @@ constexpr auto XOR_BLOCK = 8;
 /// \return  加解密后数据大小
 int XorCipher(const unsigned char *data, int data_size, unsigned char *out, const unsigned char *pass, int pass_size)
 {
-    /// 初始化密钥
-    auto p = *(unsigned long long *)pass;
+    static const char iv[] = "abcdefgh";
+    /// 初始化秘钥
+    auto p = *(unsigned long long *)iv;
+    /// 秘钥补全，并且异或初始化向量
+    /// 秘钥小于 XOR_BLOCK 或者大于 XOR_BLOCK
+    for (int i = 0; i < pass_size; i += XOR_BLOCK)
+    {
+        unsigned long long tmp  = 0;
+        int                size = XOR_BLOCK;
+        /// 秘钥小于 XOR_BLOCK
+        if (pass_size - i < XOR_BLOCK)
+        {
+            size = pass_size - i;
+        }
+        memcpy(&tmp, (pass + i), size);
+        p = (p ^ tmp);
+    }
 
     /// 数据源转换成8字节数据类型
     auto d = (unsigned long long *)data;
@@ -25,6 +40,22 @@ int XorCipher(const unsigned char *data, int data_size, unsigned char *out, cons
         /// XOR 异或运算
         o[i] = (d[i] ^ p);
     }
+    /*
+        block = 8
+        12345678 9
+        12345678 90000000  ZERO
+        12345678 97777777   PKCS7 
+        学员实现 PKCS7
+    */
+    /// BUG 解决加密解密之后数据不全
+    /// 输入数据的补充 ZERO
+    int mod = data_size % XOR_BLOCK;
+    if (mod != 0)
+    {
+        unsigned long long tmp = 0;
+        memcpy(&tmp, (d + i), mod);
+        o[i] = (tmp ^ p);
+    }
 
     int re_size = data_size;
     return re_size;
@@ -32,11 +63,11 @@ int XorCipher(const unsigned char *data, int data_size, unsigned char *out, cons
 
 int main(int argc, char *argv[])
 {
-    unsigned char data[]     = "测试加解密数据TEST";
+    unsigned char data[]     = "测试加解密数据TEST123测试秘钥";
     unsigned char out[1024]  = { 0 };
     unsigned char out2[1024] = { 0 };
 
-    unsigned char pass[]    = "123456";
+    unsigned char pass[]    = "12345678";
     int           pass_size = strlen((char *)pass);
     int           len       = XorCipher(data, sizeof(data), out, pass, pass_size);
     std::cout << len << "|" << out << std::endl;
