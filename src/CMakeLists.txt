@@ -59,6 +59,8 @@ add_subdirectory(MD5_test_hash)
 add_subdirectory(MD5_hash_list)
 add_subdirectory(SA1_merkle_hash)
 add_subdirectory(SA256_test_bit)
+add_subdirectory(SA3_and_sm3_test)
+add_subdirectory(HMAC_test)
 
 # 拷贝assert目录到输出目录
 set(ASSERT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/assert)
