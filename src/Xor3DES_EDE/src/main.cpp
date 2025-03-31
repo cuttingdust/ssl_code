@@ -7,10 +7,13 @@
 
 int main(int argc, char *argv[])
 {
-    const unsigned char data[]    = "1234567812345678";     /// 输入
-    unsigned char       out[1024] = { 0 };                  /// 输出
-    unsigned char       key[128]  = "12345678901234567890"; /// 秘钥
-    unsigned char       iv[128]   = { 0 };                  /// 初始化向量
+    // const unsigned char data[] = "1234567812345"; /// 输入
+    const unsigned char data[]    = "1234567812345678"; /// 输入
+    int data_size = strlen((char *)data);
+    std::cout << "data_size = " << data_size << std::endl;
+    unsigned char out[1024] = { 0 };                  /// 输出
+    unsigned char key[128]  = "12345678901234567890"; /// 秘钥
+    unsigned char iv[128]   = { 0 };                  /// 初始化向量
 
     /// 三重DES 3DES 算法
     auto cipher = EVP_des_ede3_cbc();
@@ -40,6 +43,27 @@ int main(int argc, char *argv[])
     }
     std::cout << "EVP_CipherInit success！" << std::endl;
 
+    /// 默认 PKCS7 补充大小 EVP_PADDING_PKCS7
+    /// 关闭自动填充
+    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    // EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
+    int out_size = 0;
+
+    /// 只处理分组大小得到数据,如果取消自动填充，多余数据丢弃
+    /// 如果自动填充，则在EVP_CipherFinal 中获取数据
+    EVP_CipherUpdate(ctx,
+                     out,       /// 输出
+                     &out_size, /// 输出数据大小
+                     data,      /// 输入数据
+                     data_size);
+    std::cout << "EVP_CipherUpdate size:" << out_size << std::endl;
+
+    /// 取出最后一块数据（需要填充的），或者是padding补充的数据
+    int padding_size = 0;
+    EVP_CipherFinal(ctx, out + out_size, &padding_size);
+    std::cout << "padding_size = " << padding_size << std::endl;
+    out_size += padding_size;
+    std::cout << out_size << ":" << out << std::endl;
 
     /// 释放上下文
     EVP_CIPHER_CTX_free(ctx);
