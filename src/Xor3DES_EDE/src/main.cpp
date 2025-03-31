@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
 
     /// 默认 PKCS7 补充大小 EVP_PADDING_PKCS7
     /// 关闭自动填充
-    // EVP_CIPHER_CTX_set_padding(ctx, 0);
-    EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
+    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    // EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
     int out_size = 0;
 
     /// 只处理分组大小得到数据,如果取消自动填充，多余数据丢弃
@@ -74,6 +74,9 @@ int main(int argc, char *argv[])
     {
         ERR_print_errors_fp(stderr);
     }
+
+    /// 多余的数据会被舍弃掉 但是补全策略需要一致
+    // EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     /// 解密密文后存放的明文
     unsigned char out2[1024] = { 0 };
