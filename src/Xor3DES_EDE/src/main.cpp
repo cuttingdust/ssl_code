@@ -7,8 +7,8 @@
 
 int main(int argc, char *argv[])
 {
-    // const unsigned char data[] = "1234567812345"; /// 输入
-    const unsigned char data[]    = "1234567812345678"; /// 输入
+    const unsigned char data[] = "1234567812345"; /// 输入
+    // const unsigned char data[]    = "1234567812345678"; /// 输入
     int data_size = strlen((char *)data);
     std::cout << "data_size = " << data_size << std::endl;
     unsigned char out[1024] = { 0 };                  /// 输出
@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
 
     /// 默认 PKCS7 补充大小 EVP_PADDING_PKCS7
     /// 关闭自动填充
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
-    // EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
+    // EVP_CIPHER_CTX_set_padding(ctx, 0);
+    EVP_CIPHER_CTX_set_padding(ctx, EVP_PADDING_PKCS7);
     int out_size = 0;
 
     /// 只处理分组大小得到数据,如果取消自动填充，多余数据丢弃
@@ -64,6 +64,30 @@ int main(int argc, char *argv[])
     std::cout << "padding_size = " << padding_size << std::endl;
     out_size += padding_size;
     std::cout << out_size << ":" << out << std::endl;
+
+    //////////////////////////////////////////////////////////////////
+    /// 解密数据 使用原来的ctx
+    re = EVP_CipherInit(ctx, cipher, key, iv,
+                        0 /// 0表示解密
+    );
+    if (!re)
+    {
+        ERR_print_errors_fp(stderr);
+    }
+
+    /// 解密密文后存放的明文
+    unsigned char out2[1024] = { 0 };
+    int           out2_size  = 0;
+    /// 解密数据 填充数据取不到
+    EVP_CipherUpdate(ctx, out2, &out2_size, /// 输入密文数据
+                     out, out_size);        /// 输出解密后明文
+    std::cout << "EVP_CipherUpdate out2_size = " << out2_size << std::endl;
+
+    /// 取出填充数据
+    EVP_CipherFinal(ctx, out2 + out2_size, &padding_size);
+    std::cout << "EVP_CipherFinal padding_size=" << padding_size << std::endl;
+    out2_size += padding_size;
+    std::cout << out2_size << ":" << out2 << "|" << std::endl;
 
     /// 释放上下文
     EVP_CIPHER_CTX_free(ctx);
