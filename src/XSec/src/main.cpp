@@ -98,14 +98,16 @@ public:
         auto start   = clock();
         int  en_size = sec.encrypt(in_, data_size_, en_);
         auto end     = clock();
-        std::cout << en_size << "加密花费时间：" << (double)((end - start) / CLOCKS_PER_SEC) << "秒" << std::endl;
+        std::cout << en_size << "加密花费时间：" << (double)((end - start) / (double)CLOCKS_PER_SEC) << "秒"
+                  << std::endl;
 
         /// 解密
         sec.init(type, passwd, false);
         start       = clock();
         int de_size = sec.encrypt(en_, en_size, de_);
         end         = clock();
-        std::cout << de_size << "解密花费时间：" << (double)((end - start) / CLOCKS_PER_SEC) << "秒" << std::endl;
+        std::cout << de_size << "解密花费时间：" << (double)((end - start) / (double)CLOCKS_PER_SEC) << "秒"
+                  << std::endl;
     }
 
 private:
@@ -123,7 +125,7 @@ int main(int argc, char *argv[])
 {
     {
         TestCipher ci;
-        ci.init(1024 * 1024 * 10);
+        ci.init(1024 * 1024 * 100); /// 100M
 
         TEST_CIPHER(XDES_ECB);
         TEST_CIPHER(XDES_CBC);
