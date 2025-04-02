@@ -19,29 +19,33 @@ public:
     /// \param in
     /// \param in_size
     /// \param out
+    /// \param is_end
     /// \return
-    auto enDesECB(const unsigned char *in, int in_size, unsigned char *out) -> int;
+    auto enDesECB(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int;
 
     /// \brief DES ECB模式解密
     /// \param in
     /// \param in_size
     /// \param out
+    /// \param is_end
     /// \return
-    auto deDesECB(const unsigned char *in, int in_size, unsigned char *out) -> int;
+    auto deDesECB(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int;
 
     /// \brief DES CBC模式加密
     /// \param in
     /// \param in_size
     /// \param out
+    /// \param is_end
     /// \return
-    auto enDesCBC(const unsigned char *in, int in_size, unsigned char *out) -> int;
+    auto enDesCBC(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int;
 
     /// \brief  DES CBC模式解密
     /// \param in
     /// \param in_size
     /// \param out
+    /// \param is_end
     /// \return
-    auto deDesCBC(const unsigned char *in, int in_size, unsigned char *out) -> int;
+    auto deDesCBC(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int;
 
 public:
     XSec            *owenr_      = nullptr;
@@ -57,7 +61,7 @@ XSec::PImpl::PImpl(XSec *owenr) : owenr_(owenr)
 {
 }
 
-auto XSec::PImpl::enDesECB(const unsigned char *in, int in_size, unsigned char *out) -> int
+auto XSec::PImpl::enDesECB(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int
 {
     ///数据填充 PKCS7 Padding
     /*
@@ -80,22 +84,29 @@ auto XSec::PImpl::enDesECB(const unsigned char *in, int in_size, unsigned char *
         }
         DES_ecb_encrypt((const_DES_cblock *)(in + i), (DES_cblock *)(out + i), &ks_, DES_ENCRYPT);
     }
+
+    if (!is_end)
+        return in_size;
+
     /// 补充 PKCS7结尾
     DES_ecb_encrypt((const_DES_cblock *)pad, (DES_cblock *)(out + i), &ks_, DES_ENCRYPT);
     return in_size + padding_size;
 }
 
-auto XSec::PImpl::deDesECB(const unsigned char *in, int in_size, unsigned char *out) -> int
+auto XSec::PImpl::deDesECB(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int
 {
     for (int i = 0; i < in_size; i += block_size_)
     {
         DES_ecb_encrypt((const_DES_cblock *)(in + i), (DES_cblock *)(out + i), &ks_, DES_DECRYPT);
     }
-    /// PKCS7 最后一个字节存储的补充字节数
-    return in_size - out[in_size - 1];
+    if (is_end)
+        /// PKCS7 最后一个字节存储的补充字节数
+        return in_size - out[in_size - 1];
+    else
+        return in_size;
 }
 
-auto XSec::PImpl::enDesCBC(const unsigned char *in, int in_size, unsigned char *out) -> int
+auto XSec::PImpl::enDesCBC(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int
 {
     /// 填充的数据 PKCS7 Padding
     unsigned char pad[8]       = { 0 };
@@ -108,6 +119,9 @@ auto XSec::PImpl::enDesCBC(const unsigned char *in, int in_size, unsigned char *
     /// ncbc保留iv修改 减去需要补充的数据
     DES_ncbc_encrypt(in, out, size1, &ks_, (DES_cblock *)iv_, DES_ENCRYPT);
 
+    if (!is_end)
+        return in_size;
+
     /// PKCS7 Padding
     if (in_size % block_size_ != 0)
     {
@@ -118,9 +132,12 @@ auto XSec::PImpl::enDesCBC(const unsigned char *in, int in_size, unsigned char *
     return in_size + padding_size;
 }
 
-auto XSec::PImpl::deDesCBC(const unsigned char *in, int in_size, unsigned char *out) -> int
+auto XSec::PImpl::deDesCBC(const unsigned char *in, int in_size, unsigned char *out, bool is_end) -> int
 {
     DES_ncbc_encrypt(in, out, in_size, &ks_, (DES_cblock *)iv_, DES_DECRYPT);
+    if (!is_end)
+        return in_size;
+
     return in_size - out[in_size - 1];
 }
 
@@ -131,7 +148,7 @@ XSec::XSec()
 
 XSec::~XSec() = default;
 
-auto XSec::init(XSecType type, const std::string &pass, bool is_en) -> bool
+auto XSec::init(const XSecType &type, const std::string &pass, bool is_en) -> bool
 {
     this->close();
 
@@ -199,6 +216,16 @@ auto XSec::init(XSecType type, const std::string &pass, bool is_en) -> bool
                 cipher = EVP_aes_256_cbc();
                 break;
             }
+        case XSM4_ECB:
+            {
+                cipher = EVP_sm4_ecb();
+                break;
+            }
+        case XSM4_CBC:
+            {
+                cipher = EVP_sm4_cbc();
+                break;
+            }
         default:
             break;
     }
@@ -237,22 +264,22 @@ auto XSec::encrypt(const unsigned char *in, int in_size, unsigned char *out, boo
     {
         if (impl_->is_en_)
         {
-            return impl_->enDesECB(in, in_size, out);
+            return impl_->enDesECB(in, in_size, out, is_end);
         }
         else
         {
-            return impl_->deDesECB(in, in_size, out);
+            return impl_->deDesECB(in, in_size, out, is_end);
         }
     }
     else if (impl_->type_ == XDES_CBC)
     {
         if (impl_->is_en_)
         {
-            return impl_->enDesCBC(in, in_size, out);
+            return impl_->enDesCBC(in, in_size, out, is_end);
         }
         else
         {
-            return impl_->deDesCBC(in, in_size, out);
+            return impl_->deDesCBC(in, in_size, out, is_end);
         }
     }
 
