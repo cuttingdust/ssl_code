@@ -23,7 +23,15 @@ public:
     enum XSecType
     {
         XDES_ECB,
-        XDES_CBC
+        XDES_CBC,
+        X3DES_ECB,
+        X3DES_CBC,
+        XAES128_ECB,
+        XAES128_CBC,
+        XAES192_ECB,
+        XAES192_CBC,
+        XAES256_ECB,
+        XAES256_CBC,
     };
 
 public:
@@ -39,7 +47,10 @@ public:
     /// \param in_size 数据大小
     /// \param out 输出数据
     /// \return 成功返回加解密后数据字节大小，失败返回0
-    virtual auto encrypt(const unsigned char *in, int in_size, unsigned char *out) -> int;
+    virtual auto encrypt(const unsigned char *in, int in_size, unsigned char *out, bool is_end = true) -> int;
+
+    /// \brief
+    virtual auto close() -> void;
 
 private:
     class PImpl;
