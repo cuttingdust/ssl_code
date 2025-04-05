@@ -38,3 +38,4 @@ else
     echo "不支持的参数: $1"
     echo "使用方法: git_proxy.sh on|off|global on|global off"
     exit 1
+fi
