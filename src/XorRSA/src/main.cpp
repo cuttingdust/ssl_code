@@ -1,5 +1,5 @@
 #include <openssl/rsa.h>
-
+#include <openssl/err.h>
 #include <iostream>
 
 void PrintBn(const BIGNUM* n)
@@ -62,7 +62,49 @@ RSA* CreateRSAKey()
 
 int main(int argc, char* argv[])
 {
-    auto r = CreateRSAKey();
+    unsigned char data[1024] = { 0 };
+    unsigned char out[2046]  = { 0 };
+    for (int i = 0; i < sizeof(data) - 1; ++i)
+    {
+        data[i] = 'A' + i % 26;
+    }
+    int data_size = sizeof(data);
+
+    auto r          = CreateRSAKey();
+    int  key_size   = RSA_size(r);
+    int  block_size = key_size - RSA_PKCS1_PADDING_SIZE;
+
+    std::cout << "rsa key size = " << key_size << std::endl;
+
+    int out_size = 0;
+
+    for (int i = 0; i < data_size; i += block_size)
+    {
+        int en_size = block_size;
+        if (data_size - i < block_size)
+        {
+            en_size = data_size - i;
+        }
+
+
+        int out_off = i + RSA_PKCS1_PADDING_SIZE * (i / block_size);
+
+        int re = RSA_public_encrypt(en_size,          /// 数据大小
+                                    data + i,         /// 输入数据
+                                    out + out_off,    /// 输出数据
+                                    r,                /// 私钥 公钥
+                                    RSA_PKCS1_PADDING /// 填充方式
+        );
+        if (re < 0)
+        {
+            ERR_print_errors_fp(stderr);
+        }
+
+        out_size = out_off + key_size;
+        std::cout << re << std::endl;
+    }
+
+    std::cout << "out_size = " << out_size << std::endl;
 
     RSA_free(r);
     getchar();

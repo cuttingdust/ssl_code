@@ -1,4 +1,3 @@
-#include <openssl/applink.c>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
