@@ -97,24 +97,56 @@ int RsaEncrypt(RSA* r, unsigned char* data, int data_size, unsigned char* out)
 
     std::cout << "out_size = " << out_size << std::endl;
 
-    RSA_free(r);
-
     return out_size;
+}
+
+int RsaDecrypt(RSA* r, unsigned char* data, int data_size, unsigned char* out)
+{
+    int key_size = RSA_size(r);
+    int out_off  = 0;
+    for (int i = 0; i < data_size; i += key_size)
+    {
+        int re = RSA_private_decrypt(key_size, data + i, out + out_off, r, RSA_PKCS1_PADDING);
+        if (re < 0)
+        {
+            ERR_print_errors_fp(stderr);
+        }
+        out_off += re;
+    }
+    return out_off;
 }
 
 int main(int argc, char* argv[])
 {
     unsigned char data[1024] = { 0 };
     unsigned char out[2046]  = { 0 };
+    unsigned char out2[2046] = { 0 };
     for (int i = 0; i < sizeof(data) - 1; ++i)
     {
         data[i] = 'A' + i % 26;
     }
     int data_size = sizeof(data);
 
-    auto r = CreateRSAKey();
-    RsaEncrypt(r, data, data_size, out);
+    auto r        = CreateRSAKey();
+    int  en_size = RsaEncrypt(r, data, data_size, out);
+    std::cout << en_size << ": " << out << std::endl;
 
+    /// ´æ·Å½âÃÜË½Ô¿
+    RSA* rd = RSA_new();
+    /// n d e
+    auto n = BN_new();
+    auto d = BN_new();
+    auto e = BN_new();
+
+    BN_copy(n, RSA_get0_n(r));
+    BN_copy(e, RSA_get0_e(r));
+    BN_copy(d, RSA_get0_d(r));
+    RSA_set0_key(rd, n, e, d);
+    int de_size = RsaDecrypt(rd, out, en_size, out2);
+    std::cout << de_size << ": " << out2 << std::endl;
+
+    RSA_free(r);
+    RSA_free(rd);
     getchar();
 
     return 0;
