@@ -247,6 +247,50 @@ int EvpSign(const unsigned char* in, int in_size, unsigned char* sign)
     return size;
 }
 
+////////////////////////////////////////////////////////////////////////
+/// EVP RSA 验签 hash=》公钥验签
+bool EvpRsaVerify(const unsigned char* in, int in_size, const unsigned char* sign, int sign_size)
+{
+    /// 1 读取pem中的公钥
+    FILE* fp = fopen(PUBKEY_PEM, "r");
+    if (!fp)
+        return 0;
+    RSA* r = NULL;
+    PEM_read_RSAPublicKey(fp, &r, NULL, NULL);
+    fclose(fp);
+
+    if (!r)
+    {
+        ERR_print_errors_fp(stderr);
+        return false;
+    }
+
+    /// 2 生成EVP_PKEY 生成
+    EVP_PKEY* pkey = EVP_PKEY_new();
+    EVP_PKEY_set1_RSA(pkey, r); /// 设置为rsa的秘钥
+    RSA_free(r);
+
+    /// 验签 hash算法
+    auto mctx = EVP_MD_CTX_new();
+    EVP_VerifyInit(mctx, EVP_sha512());
+
+    /// 生成单向散列
+    EVP_VerifyUpdate(mctx, in, in_size);
+
+    /// 公钥解密签名 ，对比生成的单向散列
+    int re = EVP_VerifyFinal(mctx, /// 上下文中存放单向散列
+                             sign, /// 签名
+                             sign_size,
+                             pkey); /// 公钥解密
+    EVP_MD_CTX_free(mctx);
+    EVP_PKEY_free(pkey);
+
+    if (re == 1)
+        return true;
+
+    return false;
+}
+
 int main(int argc, char* argv[])
 {
     unsigned char data[1024] = { 0 };
@@ -263,6 +307,27 @@ int main(int argc, char* argv[])
     std::cout << sign_size << ": " << std::endl;
     std::cout << out << std::endl;
     std::cout << "=======================================" << std::endl;
+
+    if (EvpRsaVerify(data, data_size, out, sign_size))
+    {
+        std::cout << "verify ok" << std::endl;
+    }
+    else
+    {
+        std::cout << "verify failed" << std::endl;
+    }
+
+    // data[0] = 'C'; /// 数据变更
+    out[0] = 'C'; /// hash变更
+
+    if (EvpRsaVerify(data, data_size, out, sign_size))
+    {
+        std::cout << "verify ok" << std::endl;
+    }
+    else
+    {
+        std::cout << "verify failed" << std::endl;
+    }
 
     /// 生成RSA秘钥对
     // auto pKey = EvpRsaKey();
