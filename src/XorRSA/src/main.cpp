@@ -60,19 +60,10 @@ RSA* CreateRSAKey()
     return r;
 }
 
-int main(int argc, char* argv[])
+int RsaEncrypt(RSA* r, unsigned char* data, int data_size, unsigned char* out)
 {
-    unsigned char data[1024] = { 0 };
-    unsigned char out[2046]  = { 0 };
-    for (int i = 0; i < sizeof(data) - 1; ++i)
-    {
-        data[i] = 'A' + i % 26;
-    }
-    int data_size = sizeof(data);
-
-    auto r          = CreateRSAKey();
-    int  key_size   = RSA_size(r);
-    int  block_size = key_size - RSA_PKCS1_PADDING_SIZE;
+    int key_size   = RSA_size(r);
+    int block_size = key_size - RSA_PKCS1_PADDING_SIZE;
 
     std::cout << "rsa key size = " << key_size << std::endl;
 
@@ -107,6 +98,23 @@ int main(int argc, char* argv[])
     std::cout << "out_size = " << out_size << std::endl;
 
     RSA_free(r);
+
+    return out_size;
+}
+
+int main(int argc, char* argv[])
+{
+    unsigned char data[1024] = { 0 };
+    unsigned char out[2046]  = { 0 };
+    for (int i = 0; i < sizeof(data) - 1; ++i)
+    {
+        data[i] = 'A' + i % 26;
+    }
+    int data_size = sizeof(data);
+
+    auto r = CreateRSAKey();
+    RsaEncrypt(r, data, data_size, out);
+
     getchar();
 
     return 0;
