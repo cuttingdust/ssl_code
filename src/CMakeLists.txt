@@ -69,6 +69,7 @@ add_subdirectory(XSec)
 add_subdirectory(Xor3DES_EDE)
 add_subdirectory(Xor3DES_FILE)
 add_subdirectory(XorRSA)
+add_subdirectory(XorRSA_EVP)
 
 # 拷贝assert目录到输出目录
 set(ASSERT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/assert)
