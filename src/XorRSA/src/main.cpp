@@ -1,5 +1,10 @@
 #include <openssl/rsa.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#ifdef _WIN32
+#include <openssl/applink.c>
+#endif
 #include <iostream>
 
 void PrintBn(const BIGNUM* n)
@@ -13,6 +18,7 @@ void PrintBn(const BIGNUM* n)
     printf("\n");
 }
 
+//////////////////////////////////////////////////////
 /// 生成RSA密钥对
 RSA* CreateRSAKey()
 {
@@ -116,38 +122,119 @@ int RsaDecrypt(RSA* r, unsigned char* data, int data_size, unsigned char* out)
     return out_off;
 }
 
+//////////////////////////////////////////////////////
+/// 生成RSA 秘钥对
+/// @return 返回的pkey由调用EVP_PKEY_free释放
+EVP_PKEY* EvpRsaKey()
+{
+    /// 1. 创建RSA公钥加密上下文
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+    if (!ctx)
+    {
+        ERR_print_errors_fp(stderr);
+        return NULL;
+    }
+
+    /// 2. 初始化RSA公钥加密上下文
+    if (EVP_PKEY_keygen_init(ctx) <= 0)
+    {
+        ERR_print_errors_fp(stderr);
+        EVP_PKEY_CTX_free(ctx);
+        return NULL;
+    }
+
+    /// 3 设置参数 RSA 秘钥位数
+    if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 1024) <= 0)
+    {
+        ERR_print_errors_fp(stderr);
+        EVP_PKEY_CTX_free(ctx);
+        return NULL;
+    }
+
+    /// 4 秘钥生成
+    EVP_PKEY* pkey = NULL;
+    /// 内部会生成EVP_PKEY 空间
+    if (EVP_PKEY_keygen(ctx, &pkey) <= 0)
+    {
+        ERR_print_errors_fp(stderr);
+        EVP_PKEY_CTX_free(ctx);
+        return NULL;
+    }
+    /// 释放上下文
+    EVP_PKEY_CTX_free(ctx);
+
+    /// 获取参数列表
+    auto tp = EVP_PKEY_gettable_params(pkey);
+    while (tp)
+    {
+        if (!tp->key)
+            break;
+        std::cout << tp->key << std::endl;
+        tp++;
+    }
+    /// 获取参数的值
+    BIGNUM* d = 0;
+    EVP_PKEY_get_bn_param(pkey, "d", &d);
+    PrintBn(d);
+    BN_free(d);
+
+    /// 输出公钥pem文件
+    FILE* pubf = fopen("./assert/pubkey.pem", "w");
+    PEM_write_RSAPublicKey(pubf, EVP_PKEY_get0_RSA(pkey));
+
+    /// 输出明文私钥pem文件
+    FILE* prif = fopen("./assert/prikey.pem", "w");
+    PEM_write_RSAPrivateKey(prif, EVP_PKEY_get0_RSA(pkey),
+                            NULL, /// 加密的上下文
+                            NULL, /// 秘钥
+                            0,    /// 秘钥长度
+                            NULL, /// 加密回调函数
+                            NULL  /// 用户数据回调使用
+    );
+
+
+    fclose(pubf);
+    fclose(prif);
+    return pkey;
+}
+
+
 int main(int argc, char* argv[])
 {
-    unsigned char data[1024] = { 0 };
-    unsigned char out[2046]  = { 0 };
-    unsigned char out2[2046] = { 0 };
-    for (int i = 0; i < sizeof(data) - 1; ++i)
-    {
-        data[i] = 'A' + i % 26;
-    }
-    int data_size = sizeof(data);
+    // unsigned char data[1024] = { 0 };
+    // unsigned char out[2046]  = { 0 };
+    // unsigned char out2[2046] = { 0 };
+    // for (int i = 0; i < sizeof(data) - 1; ++i)
+    // {
+    //     data[i] = 'A' + i % 26;
+    // }
+    // int data_size = sizeof(data);
+    //
+    // auto r        = CreateRSAKey();
+    // int  en_size = RsaEncrypt(r, data, data_size, out);
+    // std::cout << en_size << ": " << out << std::endl;
+    //
+    // /// 存放解密私钥
+    // RSA* rd = RSA_new();
+    // /// n d e
+    // auto n = BN_new();
+    // auto d = BN_new();
+    // auto e = BN_new();
+    //
+    // BN_copy(n, RSA_get0_n(r));
+    // BN_copy(e, RSA_get0_e(r));
+    // BN_copy(d, RSA_get0_d(r));
+    // RSA_set0_key(rd, n, e, d);
+    // int de_size = RsaDecrypt(rd, out, en_size, out2);
+    // std::cout << de_size << ": " << out2 << std::endl;
+    //
+    // RSA_free(r);
+    // RSA_free(rd);
+    // getchar();
 
-    auto r        = CreateRSAKey();
-    int  en_size = RsaEncrypt(r, data, data_size, out);
-    std::cout << en_size << ": " << out << std::endl;
+    auto pKey = EvpRsaKey();
 
-    /// 存放解密私钥
-    RSA* rd = RSA_new();
-    /// n d e
-    auto n = BN_new();
-    auto d = BN_new();
-    auto e = BN_new();
-
-    BN_copy(n, RSA_get0_n(r));
-    BN_copy(e, RSA_get0_e(r));
-    BN_copy(d, RSA_get0_d(r));
-    RSA_set0_key(rd, n, e, d);
-    int de_size = RsaDecrypt(rd, out, en_size, out2);
-    std::cout << de_size << ": " << out2 << std::endl;
-
-    RSA_free(r);
-    RSA_free(rd);
+    EVP_PKEY_free(pKey);
     getchar();
-
     return 0;
 }
