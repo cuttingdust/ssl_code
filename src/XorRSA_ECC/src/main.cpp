@@ -86,7 +86,35 @@ int main(int argc, char* argv[])
 
     auto pkey = EccKey();
 
+    /// ecc加密上下文初始化
+    auto ctx = EVP_PKEY_CTX_new(pkey, NULL);
+    if (!ctx)
+    {
+        ERR_print_errors_fp(stderr);
+    }
+
+    /// 除了sm2 其他的一些算法会失败
+    int re = EVP_PKEY_encrypt_init(ctx);
+    if (re != 1)
+    {
+        ERR_print_errors_fp(stderr);
+    }
+
+    /// ecc 加密
+    size_t out_len = sizeof(out);
+    EVP_PKEY_encrypt(ctx, out, &out_len, data, data_size);
+    std::cout << out_len << ":" << out << std::endl;
+
+    ///  ecc 解密
+    EVP_PKEY_decrypt_init(ctx);
+    size_t in_size = out_len;
+    out_len        = sizeof(out2);
+    EVP_PKEY_decrypt(ctx, out2, &out_len, out, in_size);
+    std::cout << out_len << ":" << out2 << std::endl;
+
+
     EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
 
     getchar();
     return 0;
