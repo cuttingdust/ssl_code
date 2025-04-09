@@ -211,6 +211,7 @@ bool EvpRsaVerify(const unsigned char* in, int in_size, const unsigned char* sig
     /// =1 验签成功
     /// s签名  kG 公钥
     /// s^-1hG + s^-1xkG
+    /// x 是 rG = (x,y) 上的点
 
     /// 公钥解密签名 ，对比生成的单向散列
     int re = EVP_VerifyFinal(mctx, /// 上下文中存放单向散列
