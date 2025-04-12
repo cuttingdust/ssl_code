@@ -10,10 +10,15 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #endif
+#include <chrono>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <thread>
+
+using namespace std::chrono_literals;
 
 
 #define PORT 20030
@@ -47,13 +52,38 @@ int main(int argc, char *argv[])
             if (re != 0)
             {
                 std::cout << "connect " << ip << ":" << PORT << " faield!" << std::endl;
+                client_ctx.close();
                 getchar();
                 return -1;
             }
 
             std::cout << "connect " << ip << ":" << PORT << " success!" << std::endl;
             auto xssl = client_ctx.createXSSL(sock);
-            xssl->connect();
+
+            if (!xssl->connect())
+            {
+                client_ctx.close();
+                getchar();
+                return -1;
+            }
+
+            std::string data = "Client Write";
+            for (int i = 0;; i++)
+            {
+                std::stringstream ss;
+                ss << data;
+                ss << i;
+                int len = 0;
+                len     = xssl->write(ss.str().c_str(), ss.str().size());
+                if (len <= 0)
+                    break;
+                char buf[1024] = { 0 };
+                len            = xssl->read(buf, sizeof(buf) - 1);
+                if (len > 0)
+                    std::cout << buf << std::endl;
+                std::this_thread::sleep_for(500ms);
+            }
+            client_ctx.close();
         }
     }
     else
@@ -88,7 +118,7 @@ int main(int argc, char *argv[])
 
         for (;;)
         {
-            int client_socket = accept(accept_sock, 0, 0);
+            int client_socket = ::accept(accept_sock, nullptr, nullptr);
             if (client_socket <= 0)
                 break;
             std::cout << "accept socket" << std::endl;
@@ -100,9 +130,30 @@ int main(int argc, char *argv[])
             }
             if (!xssl->accept())
             {
+                xssl->close();
                 continue;
             }
+
+            std::string data = "Server Write";
+            for (int i = 0;; i++)
+            {
+                std::stringstream ss;
+                ss << data;
+                ss << i;
+                char buf[1024] = { 0 };
+                int  len       = 0;
+                len            = xssl->read(buf, sizeof(buf) - 1);
+                if (len > 0)
+                    std::cout << buf << std::endl;
+
+                len = xssl->write(ss.str().c_str(), ss.str().size());
+                if (len <= 0)
+                    break;
+                std::this_thread::sleep_for(500ms);
+            }
+            xssl->close();
         }
+        ctx.close();
     }
 
 

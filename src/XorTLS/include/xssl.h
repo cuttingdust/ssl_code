@@ -26,7 +26,7 @@ public:
         return std::make_shared<XSSL>();
     }
 
-    void set_ssl(SSL* ssl);
+    void set_ssl(SSL *ssl);
 
 public:
     /// \brief 客户端处理ssl握手
@@ -46,6 +46,21 @@ public:
 
     /// \brief 打印对方证书信息
     auto printCert() const -> void;
+
+    /// \brief 发送数据
+    /// \param data
+    /// \param data_size
+    /// \return
+    auto write(const void *data, int data_size) -> int;
+
+    /// \brief 接收信息
+    /// \param buf
+    /// \param buf_size
+    /// \return
+    auto read(void *buf, int buf_size) -> int;
+
+    /// \brief  释放资源
+    auto close() -> void;
 
 private:
     class PImpl;

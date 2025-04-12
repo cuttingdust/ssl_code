@@ -39,6 +39,9 @@ public:
     /// \return
     auto createXSSL(int socket) -> XSSL::Ptr;
 
+    /// \brief ÊÍ·Å×ÊÔ´
+    auto close() -> void;
+
 private:
     class PImpl;
     std::unique_ptr<PImpl> impl_;

@@ -169,4 +169,29 @@ Certificate:
     {
         std::cout << "issuer:" << str2 << std::endl;
     }
+    X509_free(cert);
+}
+
+auto XSSL::write(const void *data, int data_size) -> int
+{
+    if (!impl_->ssl_)
+        return 0;
+    return SSL_write(impl_->ssl_, data, data_size);
+}
+
+auto XSSL::read(void *buf, int buf_size) -> int
+{
+    if (!impl_->ssl_)
+        return 0;
+    return SSL_read(impl_->ssl_, buf, buf_size);
+}
+
+auto XSSL::close() -> void
+{
+    if (impl_->ssl_)
+    {
+        SSL_shutdown(impl_->ssl_);
+        SSL_free(impl_->ssl_);
+        impl_->ssl_ = nullptr;
+    }
 }

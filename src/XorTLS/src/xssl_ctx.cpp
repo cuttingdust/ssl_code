@@ -141,3 +141,12 @@ auto XSSL_CTX::createXSSL(int socket) -> XSSL::Ptr
 
     return xssl;
 }
+
+auto XSSL_CTX::close() -> void
+{
+    if (impl_->ssl_ctx_)
+    {
+        SSL_CTX_free(impl_->ssl_ctx_);
+        impl_->ssl_ctx_ = nullptr;
+    }
+}
