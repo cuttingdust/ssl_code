@@ -5,6 +5,10 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#ifndef _WIN32
+#include <sys/socket.h>
+#endif
+
 class XSSL::PImpl
 {
 public:
