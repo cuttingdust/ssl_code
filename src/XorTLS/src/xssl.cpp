@@ -176,6 +176,10 @@ auto XSSL::write(const void *data, int data_size) -> int
 {
     if (!impl_->ssl_)
         return 0;
+
+    // int sock_fd = SSL_get_fd(impl_->ssl_);
+    // return ::send(sock_fd, (char *)data, data_size, 0);
+
     return SSL_write(impl_->ssl_, data, data_size);
 }
 
@@ -183,6 +187,10 @@ auto XSSL::read(void *buf, int buf_size) -> int
 {
     if (!impl_->ssl_)
         return 0;
+
+    // int sock_fd = SSL_get_fd(impl_->ssl_);
+    // return ::recv(sock_fd, (char *)buf, buf_size, 0);
+
     return SSL_read(impl_->ssl_, buf, buf_size);
 }
 
