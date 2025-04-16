@@ -22,6 +22,11 @@ set(CMAKE_BUILD_TYPE Debug)
 find_package(OpenSSL REQUIRED)
 message("OpenSSL_FOUND = ${OpenSSL_FOUND}")
 
+#libevent
+find_package(Libevent CONFIG REQUIRED)
+message("Libevent_FOUND = ${Libevent_FOUND}")
+
+
 # OpenMP
 find_package(OpenMP)
 message("OpenMP_FOUND = ${OpenMP_FOUND}")
@@ -74,6 +79,7 @@ add_subdirectory(XorRSA_ECC)
 add_subdirectory(XorRSA_ECDH)
 add_subdirectory(XorTLS)
 add_subdirectory(XorTLS_HTTPS)
+add_subdirectory(XorTLS_EVENT)
 
 # 拷贝assert目录到输出目录
 set(ASSERT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/assert)

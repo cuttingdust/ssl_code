@@ -44,8 +44,9 @@ set(QT6_MOUDLES
 
 # libevent
 set(Libevent_MOUDLES
-	Libevent::Core
-	Libevent::Extra
+	libevent::core
+	libevent::extra
+	libevent::openssl
 )
 
 # 
@@ -139,13 +140,13 @@ macro(set_cpp name)
             endforeach()
         endif()
 
-        target_link_libraries(${name} ${DPS_TARGETS})
+        target_link_libraries(${name} PRIVATE ${DPS_TARGETS})
 
         set(DPS_TARGETS "")
     endif()
 
     message("DPS_LIBRARYS = ${DPS_LIBRARYS}")
-    target_link_libraries(${name} ${DPS_LIBRARYS})
+    target_link_libraries(${name} PRIVATE ${DPS_LIBRARYS})
     set(DPS_LIBRARYS "")
 
     target_compile_features(${name} PRIVATE
