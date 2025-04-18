@@ -26,10 +26,14 @@ XSSL::PImpl::PImpl(XSSL *owenr) : owenr_(owenr)
 
 XSSL::XSSL()
 {
+    std::cout << "XSSL create!" << std::endl;
     impl_ = std::make_unique<PImpl>(this);
 }
 
-XSSL::~XSSL() = default;
+XSSL::~XSSL()
+{
+    std::cout << "XSSL free!!!" << std::endl;
+}
 
 auto XSSL::set_ssl(SSL *ssl) const -> void
 {
@@ -101,6 +105,7 @@ auto XSSL::printCert() const -> void
     if (!cert)
     {
         std::cout << "No certificate presented by peer!" << std::endl;
+        return;
     }
 
     // X509_print_ex_fp(stdout, cert, 0, 0);

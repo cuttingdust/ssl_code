@@ -55,11 +55,13 @@ void XSSL_CTX::PImpl::setVerify(const char *ca_crt)
 
 XSSL_CTX::XSSL_CTX()
 {
+    std::cout << "XSSL_CTX create!" << std::endl;
     impl_ = std::make_unique<XSSL_CTX::PImpl>(this);
 }
 
 XSSL_CTX::~XSSL_CTX()
 {
+    std::cout << "XSSL_CTX free!!!" << std::endl;
     if (impl_->ssl_)
     {
         SSL_free(impl_->ssl_);

@@ -2,6 +2,7 @@
 
 #include <event2/event.h>
 #include <event2/buffer.h>
+#include <event2/listener.h>
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
 
@@ -22,8 +23,14 @@
 #include <string>
 #include <sstream>
 #include <thread>
-#define PORT 20030
+
 using namespace std::chrono_literals;
+
+enum
+{
+    PORT = 20030,
+};
+
 
 static void ReadCB(struct bufferevent *bev, void *arg)
 {
@@ -31,12 +38,32 @@ static void ReadCB(struct bufferevent *bev, void *arg)
     int  len       = bufferevent_read(bev, buf, sizeof(buf) - 1);
     if (len > 0)
         std::cout << buf << std::endl;
-    std::string data = "buffervent client send";
-    bufferevent_write(bev, data.c_str(), data.size());
+
+    std::stringstream ss;
+    static int        i;
+    i++;
+    std::string data = "bufferevent client send ";
+    ss << data << i;
+    bufferevent_write(bev, ss.str().c_str(), ss.str().size());
 }
 
 static void WriteCB(struct bufferevent *bev, void *arg)
 {
+}
+
+static void SReadCB(struct bufferevent *bev, void *arg)
+{
+    char buf[1024] = { 0 };
+    int  len       = bufferevent_read(bev, buf, sizeof(buf) - 1);
+    if (len > 0)
+        std::cout << buf << std::endl;
+
+    std::stringstream ss;
+    static int        i;
+    i++;
+    std::string data = "bufferevent server send ";
+    ss << data << i;
+    bufferevent_write(bev, ss.str().c_str(), ss.str().size());
 }
 
 static void EventCB(struct bufferevent *bev, short what, void *arg)
@@ -44,10 +71,49 @@ static void EventCB(struct bufferevent *bev, short what, void *arg)
     ///SSL握手成功 （客户端和服务端都会进入，协商秘钥成功）
     if (what & BEV_EVENT_CONNECTED)
     {
+        XSSL       *ssl  = static_cast<XSSL *>(arg);
         std::string data = "buffervent client send";
         bufferevent_write(bev, data.c_str(), data.size());
+
+        ssl->printCert();
+        ssl->printCipher();
     }
 }
+
+static void SEventCB(struct bufferevent *bev, short what, void *arg)
+{
+    /// SSL握手成功 （客户端和服务端都会进入，协商秘钥成功）
+    if (what & BEV_EVENT_CONNECTED)
+    {
+        XSSL *ssl = static_cast<XSSL *>(arg);
+        ssl->printCert();
+        ssl->printCipher();
+
+        // std::string data = "buffervent client send";
+        // bufferevent_write(bev, data.c_str(), data.size());
+    }
+}
+
+static void ListenCB(struct evconnlistener *e, evutil_socket_t socket, struct sockaddr *a, int socklen, void *arg)
+{
+    std::cout << __func__ << std::endl;
+    XSSL_CTX *ctx      = static_cast<XSSL_CTX *>(arg);
+    auto      base     = evconnlistener_get_base(e);
+    auto      xssl_tmp = ctx->createXSSL(socket);
+    auto      xssl     = new XSSL;
+    xssl->set_ssl(xssl_tmp->get_ssl());
+
+    struct bufferevent *bev = bufferevent_openssl_socket_new(base, socket, xssl->get_ssl(), BUFFEREVENT_SSL_ACCEPTING,
+                                                             BEV_OPT_CLOSE_ON_FREE);
+    if (bev == nullptr)
+    {
+        std::cout << "bufferevent_openssl_socket_new failed!" << std::endl;
+    }
+
+    bufferevent_setcb(bev, SReadCB, WriteCB, SEventCB, xssl);
+    bufferevent_enable(bev, EV_READ | EV_WRITE);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -66,12 +132,12 @@ int main(int argc, char *argv[])
             client_ctx.initClient();
 
             /// 客户端
-            std::string           ip   = "127.0.0.1";
-            event_base           *base = event_base_new();
-            int                   sock = socket(AF_INET, SOCK_STREAM, 0);
-            std::shared_ptr<XSSL> xssl = client_ctx.createXSSL(sock);
-            struct bufferevent   *bev  = bufferevent_openssl_socket_new(base, sock, xssl->get_ssl(),
-                                                                        BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE);
+            std::string                  ip   = "127.0.0.1";
+            event_base                  *base = event_base_new();
+            int                          sock = socket(AF_INET, SOCK_STREAM, 0);
+            static std::shared_ptr<XSSL> xssl = client_ctx.createXSSL(sock);
+            struct bufferevent          *bev  = bufferevent_openssl_socket_new(base, sock, xssl->get_ssl(),
+                                                                               BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE);
             if (bev == nullptr)
             {
                 std::cout << "bufferevent_openssl_socket_new failed!" << std::endl;
@@ -94,8 +160,9 @@ int main(int argc, char *argv[])
             for (;;)
             {
                 event_base_loop(base, EVLOOP_NONBLOCK);
-                std::this_thread::sleep_for(1ms);
+                std::this_thread::sleep_for(500ms);
             }
+            bufferevent_free(bev);
             xssl->close();
             client_ctx.close();
             event_base_free(base);
@@ -105,7 +172,15 @@ int main(int argc, char *argv[])
     {
         printf("Server start.\n");
 
-        XSSL_CTX ctx;
+        XSSL_CTX    ctx;
+        event_base *base = event_base_new();
+
+        sockaddr_in sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sin_family      = AF_INET;
+        sa.sin_addr.s_addr = INADDR_ANY;
+        sa.sin_port        = htons(PORT);
+
         if (!ctx.initServer("assert/server.crt", "assert/server.key"))
         {
             std::cout << R"(ctx.initServer("assert/server.crt", "assert/server.key") failed！)" << std::endl;
@@ -114,60 +189,30 @@ int main(int argc, char *argv[])
         }
         std::cout << R"(ctx.initServer("assert/server.crt", "assert/server.key") success！)" << std::endl;
 
-        int         accept_sock = ::socket(AF_INET, SOCK_STREAM, 0);
-        sockaddr_in sa_server;
-        memset(&sa_server, 0, sizeof(sa_server));
-        sa_server.sin_family      = AF_INET;
-        sa_server.sin_addr.s_addr = INADDR_ANY;
-        sa_server.sin_port        = htons(PORT);
-
-        int re = ::bind(accept_sock, reinterpret_cast<sockaddr *>(&sa_server), sizeof(sa_server));
-        if (re != 0)
+        evconnlistener *ev = evconnlistener_new_bind(
+                base,                                      ///  libevent的上下文
+                ListenCB,                                  /// 接收到连接的回调函数
+                &ctx,                                      /// 回调函数获取的参数 arg
+                LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, /// 地址重用，evconnlistener关闭同时关闭socket
+                10,                                        /// 连接队列大小，对应listen函数
+                reinterpret_cast<sockaddr *>(&sa),         /// 绑定的地址和端口
+                sizeof(sa));
+        if (ev == nullptr)
         {
-            std::cerr << " bind port:" << PORT << " failed!" << std::endl;
+            std::cout << "evconnlistener_new_bind failed!" << std::endl;
+            ctx.close();
             getchar();
+            return -1;
         }
 
-        ::listen(accept_sock, 10);
-        std::cout << "start listen port " << PORT << std::endl;
+        std::cout << "bind port " << PORT << " success." << std::endl;
 
         for (;;)
         {
-            int client_socket = ::accept(accept_sock, nullptr, nullptr);
-            if (client_socket <= 0)
-                break;
-            std::cout << "accept socket" << std::endl;
-            auto xssl = ctx.createXSSL(client_socket);
-            if (xssl->isEmpty())
-            {
-                std::cout << "xssl.isEmpty" << std::endl;
-                continue;
-            }
-            if (!xssl->accept())
-            {
-                xssl->close();
-                continue;
-            }
-
-            std::string data = "Server Write";
-            for (int i = 0;; i++)
-            {
-                std::stringstream ss;
-                ss << data;
-                ss << i;
-                char buf[1024] = { 0 };
-                int  len       = 0;
-                len            = xssl->read(buf, sizeof(buf) - 1);
-                if (len > 0)
-                    std::cout << buf << std::endl;
-
-                len = xssl->write(ss.str().c_str(), ss.str().size());
-                if (len <= 0)
-                    break;
-                std::this_thread::sleep_for(500ms);
-            }
-            xssl->close();
+            event_base_loop(base, EVLOOP_NONBLOCK);
+            std::this_thread::sleep_for(1ms);
         }
+        event_base_free(base);
         ctx.close();
     }
 
